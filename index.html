@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>らくフリ CSV一括登録 出品形式・CSVテンプレート作成</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:sans-serif;background:#f5f5f5;padding:16px;max-width:760px;margin:0 auto}
+.app-title{font-size:15px;font-weight:600;color:#111;padding-bottom:10px;border-bottom:2px solid #2563eb;margin-bottom:12px}
+.fname-wrap{margin-bottom:12px}
+.fname{width:100%;padding:8px 12px;font-size:13px;border:1.5px solid #999;border-radius:6px;background:#fff;color:#111}
+.fname::placeholder{color:#aaa}
+.fname.err{border-color:#dc2626}
+.err-txt{font-size:11px;color:#dc2626;margin-top:4px;display:none}
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.panel{border:2px solid #2563eb;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;height:380px}
+.panel.right{border-color:#059669}
+.phead{padding:8px 12px;background:#dbeafe;border-bottom:2px solid #2563eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.phead.right{background:#d1fae5;border-bottom-color:#059669}
+.plabel{font-size:12px;font-weight:600;color:#1e40af}
+.plabel.right{color:#065f46}
+.pbadge{font-size:11px;color:#1e40af;background:#bfdbfe;padding:2px 8px;border-radius:20px;font-weight:600}
+.pbadge.right{color:#065f46;background:#a7f3d0}
+.srch-wrap{padding:7px 8px;border-bottom:1px solid #ccc;flex-shrink:0;background:#fff}
+.srch{width:100%;padding:5px 9px;font-size:12px;border:1.5px solid #999;border-radius:6px;background:#fff;color:#111}
+.srch:focus{outline:none;border-color:#2563eb}
+.list{flex:1;overflow-y:auto;padding:6px;background:#fafafa}
+.item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;cursor:pointer;border:1.5px solid #ddd;margin-bottom:3px;background:#fff}
+.item:hover{background:#eff6ff;border-color:#93c5fd}
+.item.drag-over{border:2px dashed #2563eb;background:#dbeafe}
+.item.dragging{opacity:0.3}
+.item.auto{background:#fef9c3;border-color:#fbbf24}
+.item.auto:hover{background:#fef3c7;border-color:#f59e0b}
+.ikey{font-size:10px;font-family:monospace;color:#1e40af;background:#dbeafe;padding:2px 6px;border-radius:4px;flex-shrink:0;min-width:70px;text-align:center;border:1px solid #93c5fd}
+.ikey.auto{color:#92400e;background:#fef3c7;border-color:#fbbf24}
+.ilabel{font-size:12px;color:#333;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.auto-badge{font-size:9px;color:#92400e;background:#fde68a;border:1px solid #fbbf24;border-radius:3px;padding:1px 4px;flex-shrink:0}
+.iw{position:relative;flex-shrink:0}
+.ibtn{width:20px;height:20px;border-radius:50%;border:1.5px solid #999;background:#fff;cursor:pointer;font-size:10px;color:#555;display:flex;align-items:center;justify-content:center;font-weight:700}
+.ibtn:hover{background:#f0f0f0;border-color:#555}
+.tip{display:none;position:absolute;right:0;top:24px;width:230px;background:#fff;border:2px solid #555;border-radius:8px;padding:10px 12px;font-size:11px;z-index:999;line-height:1.7;color:#222}
+.tip.show{display:block}
+.tlbl{font-size:10px;font-weight:700;display:block;margin-bottom:3px}
+.tlbl.note{color:#b45309}
+.tlbl.ex{color:#1e40af}
+.tval{color:#444;white-space:pre-wrap;word-break:break-all;display:block;margin-bottom:6px}
+.rbtn{width:18px;height:18px;border-radius:50%;border:none;background:none;cursor:pointer;color:#aaa;font-size:16px;flex-shrink:0;opacity:0;display:flex;align-items:center;justify-content:center;line-height:1}
+.item:hover .rbtn{opacity:1}
+.rbtn:hover{color:#dc2626}
+.empty{text-align:center;color:#aaa;font-size:12px;padding:32px 0}
+.btns{display:flex;gap:7px;align-items:center;margin-bottom:10px}
+.bout{padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.bout:hover{background:#1d4ed8}
+.bclr{padding:8px 14px;border:1.5px solid #999;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;color:#444}
+.bclr:hover{background:#f0f0f0}
+.result{display:none;background:#f0fdf4;border:1.5px solid #059669;border-radius:8px;padding:12px 16px;font-size:12px;color:#065f46;line-height:2}
+.result.show{display:block}
+.result-title{font-weight:700;margin-bottom:4px;color:#047857}
+</style>
+</head>
+<body>
+
+<div class="app-title">らくフリ CSV一括登録 出品形式・CSVテンプレート作成</div>
+
+<div class="fname-wrap">
+  <input class="fname" type="text" id="fname" placeholder="テンプレートの名称を設定してください">
+  <div class="err-txt" id="errtxt">⚠ テンプレート名を入力してください</div>
+</div>
+
+<div class="panels">
+  <div class="panel">
+    <div class="phead">
+      <span class="plabel">全項目</span>
+      <span class="pbadge" id="lcount">0</span>
+    </div>
+    <div class="srch-wrap">
+      <input class="srch" type="text" id="srch" placeholder="絞り込み...">
+    </div>
+    <div class="list" id="llist"></div>
+  </div>
+  <div class="panel right">
+    <div class="phead right">
+      <span class="plabel right">出力項目</span>
+      <span class="pbadge right" id="rcount">0</span>
+    </div>
+    <div class="list" id="rlist"></div>
+  </div>
+</div>
+
+<div class="btns">
+  <button class="bout" onclick="generate()">出力</button>
+  <button class="bclr" onclick="clearR()">クリア</button>
+</div>
+
+<div class="result" id="result">
+  <div class="result-title">以下のファイルを保存しました</div>
+  <div id="result-txt"></div>
+</div>
+
+<script>
+const D=[
+  {k:"url",l:"商品リンク",e:"https://www.amazon.co.jp/dp/XXX/",n:"Amazon、楽天、メルカリ、ラクマなど"},
+  {k:"memo",l:"タイトルor説明に追加するメモ",e:"A001",n:"管理番号などを設定する"},
+  {k:"title",l:"商品タイトル",e:"",n:""},
+  {k:"description",l:"商品説明",e:"",n:""},
+  {k:"price",l:"販売価格",e:"",n:""},
+  {k:"category",l:"カテゴリ（category1〜5）",e:"",n:"出力時にcategory1〜5の5項目に展開されます"},
+  {k:"travelsupplies",l:"旅行用品専用の末尾カテゴリ",e:"変換プラグ",n:"旅行用品以外は不要。選択時はカテゴリが自動追加されます"},
+  {k:"brand",l:"ブランド",e:"THE NORTH FACE\nARC'TERYX",n:"カテゴリの設定が必須。選択時はカテゴリが自動追加されます"},
+  {k:"size",l:"サイズ情報",e:"XXS以下\nXS(SS)\nS\nM\nL\nXL(LL)\n2XL(3L)\n3XL(4L)\n4XL(5L)以上\nFREE SIZE",n:"カテゴリの設定が必須。選択時はカテゴリが自動追加されます"},
+  {k:"condition",l:"商品状態",e:"新品、未使用\n未使用に近い\n目立った傷や汚れなし\nやや傷や汚れあり\n傷や汚れあり\n全体的に状態が悪い",n:""},
+  {k:"shippingcharges",l:"配送料の負担",e:"送料込み(出品者負担)\n着払い(購入者負担)",n:""},
+  {k:"deliverymethod",l:"配送の方法",e:"らくらくメルカリ便\nゆうゆうメルカリ便\n梱包・発送たのメル便\n未定\nゆうメール\nレターパック\n郵便(定形、定形外、書留など)\nクロネコヤマト\nゆうパック\nクリックポスト\nゆうパケット",n:""},
+  {k:"shippingarea",l:"発送元の地域",e:"北海道\n東京都\n大阪府",n:""},
+  {k:"daystoship",l:"発送までの日数",e:"1~2日で発送\n2~3日で発送\n4~7日で発送",n:""},
+  {k:"image1",l:"画像1（Web画像リンク先）",e:"https://drive.google.com/file/d/XXX/view?usp=drive_link",n:"20枚まで設定可能"},
+  {k:"image2",l:"画像2",e:"https://drive.google.com/file/d/XXX/view?usp=drive_link",n:""},
+  {k:"image3",l:"画像3",e:"",n:""},{k:"image4",l:"画像4",e:"",n:""},{k:"image5",l:"画像5",e:"",n:""},
+  {k:"image6",l:"画像6",e:"",n:""},{k:"image7",l:"画像7",e:"",n:""},{k:"image8",l:"画像8",e:"",n:""},
+  {k:"image9",l:"画像9",e:"",n:""},{k:"image10",l:"画像10",e:"",n:""},{k:"image11",l:"画像11",e:"",n:""},
+  {k:"image12",l:"画像12",e:"",n:""},{k:"image13",l:"画像13",e:"",n:""},{k:"image14",l:"画像14",e:"",n:""},
+  {k:"image15",l:"画像15",e:"",n:""},{k:"image16",l:"画像16",e:"",n:""},{k:"image17",l:"画像17",e:"",n:""},
+  {k:"image18",l:"画像18",e:"",n:""},{k:"image19",l:"画像19",e:"",n:""},{k:"image20",l:"画像20",e:"",n:""}
+];
+
+const CAT_EX={category1:"ファッション",category2:"レディース",category3:"トップス",category4:"シャツ・ブラウス",category5:"半袖"};
+const NEEDS_CAT=new Set(['travelsupplies','brand','size']);
+
+let displayList=[];
+let drag=null,q="";
+const gi=k=>D.find(i=>i.k===k);
+
+function firstNeedsCatIdx(){
+  return displayList.findIndex(e=>NEEDS_CAT.has(e.k));
+}
+
+function syncAutoCategory(){
+  const needsCat=displayList.some(e=>NEEDS_CAT.has(e.k));
+  const autoIdx=displayList.findIndex(e=>e.k==='category'&&e.auto);
+  const manualIdx=displayList.findIndex(e=>e.k==='category'&&!e.auto);
+  if(needsCat&&autoIdx===-1&&manualIdx===-1){
+    const insertAt=firstNeedsCatIdx();
+    displayList.splice(insertAt,0,{k:'category',auto:true});
+  } else if(needsCat&&autoIdx>-1){
+    const [entry]=displayList.splice(autoIdx,1);
+    const insertAt=firstNeedsCatIdx();
+    displayList.splice(insertAt,0,entry);
+  } else if(!needsCat&&autoIdx>-1){
+    displayList.splice(autoIdx,1);
+  }
+}
+
+function tipH(it){
+  let h='';
+  if(it.n) h+=`<span class="tlbl note">補足</span><span class="tval">${it.n}</span>`;
+  if(it.e) h+=`<span class="tlbl ex">入力例</span><span class="tval">${it.e}</span>`;
+  return h;
+}
+
+function RL(){
+  const used=new Set(displayList.map(e=>e.k));
+  const keys=D.map(i=>i.k).filter(k=>!used.has(k)).filter(k=>{
+    if(!q)return true;
+    const it=gi(k);
+    return k.includes(q)||(it&&it.l.includes(q));
+  });
+  document.getElementById('lcount').textContent=keys.length;
+  const el=document.getElementById('llist');
+  if(!keys.length){el.innerHTML='<div class="empty">すべて選択済み</div>';return;}
+  el.innerHTML=keys.map(k=>{
+    const it=gi(k);
+    const hi=it&&(it.e||it.n);
+    return `<div class="item" onclick="add('${k}')">
+      <span class="ikey">${k}</span>
+      <span class="ilabel">${it?it.l:''}</span>
+      ${hi?`<div class="iw"><button class="ibtn" onclick="event.stopPropagation();tog(this)">?</button><div class="tip">${tipH(it)}</div></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function RR(){
+  document.getElementById('rcount').textContent=displayList.length;
+  const el=document.getElementById('rlist');
+  if(!displayList.length){el.innerHTML='<div class="empty">← 左から項目を選択</div>';return;}
+  el.innerHTML=displayList.map(({k,auto},i)=>{
+    const it=gi(k);
+    const hi=it&&(it.e||it.n);
+    return `<div class="${auto?'item auto':'item'}" draggable="true"
+      ondragstart="ds(event,${i})" ondragover="dov(event,${i})" ondrop="ddp(event,${i})"
+      ondragleave="dl(event)" ondragend="de()" data-i="${i}">
+      <span style="color:#aaa;font-size:13px;cursor:grab">⠿</span>
+      <span class="${auto?'ikey auto':'ikey'}">${k}</span>
+      <span class="ilabel">${it?it.l:''}</span>
+      ${auto?'<span class="auto-badge">自動</span>':''}
+      ${hi?`<div class="iw"><button class="ibtn" onclick="event.stopPropagation();tog(this)">?</button><div class="tip">${tipH(it)}</div></div>`:''}
+      ${!auto?`<button class="rbtn" onclick="rm(${i})">×</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+function render(){RL();RR();}
+
+function add(k){
+  if(!displayList.some(e=>e.k===k)){
+    displayList.push({k,auto:false});
+    syncAutoCategory();
+    render();
+  }
+}
+function rm(i){
+  displayList.splice(i,1);
+  syncAutoCategory();
+  render();
+}
+function clearR(){
+  displayList=[];
+  render();
+  document.getElementById('result').classList.remove('show');
+}
+
+function tog(btn){
+  const tip=btn.nextElementSibling;
+  const was=tip.classList.contains('show');
+  document.querySelectorAll('.tip.show').forEach(t=>t.classList.remove('show'));
+  if(!was)tip.classList.add('show');
+}
+document.addEventListener('click',e=>{if(!e.target.classList.contains('ibtn'))document.querySelectorAll('.tip.show').forEach(t=>t.classList.remove('show'));});
+
+function ds(e,i){drag=i;setTimeout(()=>{const el=document.querySelector(`[data-i="${i}"]`);if(el)el.classList.add('dragging');},0);}
+function dov(e,i){e.preventDefault();document.querySelectorAll('.item.drag-over').forEach(el=>el.classList.remove('drag-over'));const el=document.querySelector(`[data-i="${i}"]`);if(el&&i!==drag)el.classList.add('drag-over');}
+function dl(e){e.currentTarget.classList.remove('drag-over');}
+function ddp(e,i){
+  e.preventDefault();
+  if(drag===null||drag===i)return;
+  const m=displayList.splice(drag,1)[0];
+  displayList.splice(i,0,m);
+  drag=null;render();
+}
+function de(){drag=null;document.querySelectorAll('.item.dragging,.item.drag-over').forEach(el=>{el.classList.remove('dragging','drag-over');});}
+
+function vname(){
+  const v=document.getElementById('fname').value.trim();
+  const et=document.getElementById('errtxt'),fi=document.getElementById('fname');
+  if(!v){et.style.display='block';fi.classList.add('err');return null;}
+  et.style.display='none';fi.classList.remove('err');
+  return v;
+}
+document.getElementById('fname').addEventListener('input',()=>{
+  if(document.getElementById('fname').value.trim()){
+    document.getElementById('errtxt').style.display='none';
+    document.getElementById('fname').classList.remove('err');
+  }
+});
+
+function expandKeys(){
+  const result=[];
+  displayList.forEach(({k})=>{
+    if(k==='category') result.push('category1','category2','category3','category4','category5');
+    else result.push(k);
+  });
+  return result;
+}
+
+function getExample(k){
+  if(CAT_EX[k]) return CAT_EX[k];
+  const it=gi(k);
+  return it?it.e:'';
+}
+
+function esc(v){
+  if(!v&&v!==0)return'';
+  const s=String(v);
+  if(s.includes(',')||s.includes('"')||s.includes('\n'))return'"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+
+async function generate(){
+  const fn=vname();if(!fn)return;
+  if(!displayList.length){alert('出力項目を1つ以上選択してください');return;}
+
+  const keys=expandKeys();
+  const txtContent=keys.join('\n');
+
+  const rows=keys.map(k=>{const ex=getExample(k);return ex?ex.split('\n'):[];});
+  const maxRows=Math.max(...rows.map(r=>r.length),1);
+  const dataLines=[];
+  for(let i=0;i<maxRows;i++){dataLines.push(rows.map(r=>esc(r[i]||'')).join(','));}
+  const csvContent='\uFEFF'+keys.map(esc).join(',')+'\n'+dataLines.join('\n')+'\n';
+
+  const zip=new JSZip();
+  zip.file(fn+'.txt',txtContent);
+  zip.file(fn+'_CSVテンプレート.csv',csvContent);
+
+  const blob=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=fn+'.zip';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+
+  document.getElementById('result-txt').innerHTML=
+    `出品形式ファイル：<strong>${fn}.txt</strong><br>CSVテンプレート：<strong>${fn}_CSVテンプレート.csv</strong><br><span style="color:#374151;font-size:11px">（${fn}.zip としてダウンロードされました）</span>`;
+  document.getElementById('result').classList.add('show');
+}
+
+document.getElementById('srch').addEventListener('input',e=>{q=e.target.value;RL();});
+render();
+</script>
+</body>
+</html>
